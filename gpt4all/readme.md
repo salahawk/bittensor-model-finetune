@@ -80,4 +80,5 @@ btcli run ..... --neuron.model_name=/home/{YOUR_USENAME}/gpt4all_model_tuning/tu
 
 ## Limitations & Warnings
 
-Early stopping is not yet supported. Many features are implemented but not thoroughly tested, if you encounter an issue, reach out on discord or (preferably) create an issue on this github page.
+Early stopping is not yet supported. Many features are implemented but not thoroughly tested, if
+you encounter an issue, reach out on discord or (preferably) create an issue on this github page.

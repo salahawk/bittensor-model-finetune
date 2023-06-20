@@ -26,7 +26,7 @@ point to navigate and move around files, directories, etc.
 
 To start, clone this repository:
 ```commandline
-git clone https://github.com/opentensor/gpt4all_tuning 
+git clone https://github.com/salahawk/bittensor-model-finetune/gpt4all 
 ```
 
 All following commands assume you are working from this folder, i.e. you must `cd` into the directory

@@ -35,40 +35,40 @@ created by the previous step.
 Run ```pip install -r requirements.txt``` to install the additional packages required by this script.
 
 
-## Fine-tuning with the wandb url
-
-If you have a wandb link from the validator, you can override `dataset.name` as above and set `wandb` as 1:
-```bash
-python gpt4all_finetuning.py dataset.wandb=1 dataset.name=/opentensor/opentensor-validator/runs/kltiefxf
-```
-
 
 ## Configuring training parameters
-
+First of all, you have to configure accelerate with `accelerate config` cli.
 And you have to login to wandb with wandb api key for loading data from wandb.
 Please type `wandb init` on cmd and input api key.
 
-All configurable parameters are visible and documented in `conf/config.yaml`. 
+All configurable parameters for training are visible and documented in `conf/config.yaml`. 
 The defaults are chosen for quick training and not tuned; you will need to experiment and adjust 
 these.
+
+And also you can configure deepspeed plugin with `dsCpuConfig.json`(for cpu parameter offloading) and `dsNVMEconfig.json`(for NVME parameter offloading).
 
 **Note**: The above parameters are the *only* commands you can override with this script. That is,
 you may not pass flags you would normally use when running `btcli` (i.e. `--neuron.device` will *not* work).
 If there is a flag you wish to modify feel free to submit a feature request.
 
-To view the changeable parameters, open `conf/config.yaml` in whatever text editor you prefer, or
-use `cat conf/config.yaml` to view them.
 
 You do not need to edit this file to change the parameters; they may be overridden when you call this
 script. e.g., if you wish to change the model to `nomic-ai/gpt4all-j`, and the output directory to `nomic-ai/gpt4all-j-tuned`, you would run:
 
 ```commandline
-python gpt4all_finetuning.py model.name=nomic-ai/gpt4all-j output_dir=nomic-ai/gpt4all-j-tuned dataset.wandb=1 dataset.name=/opentensor/opentensor-validator/runs/kltiefxf
+accelerate launch gpt4all_finetuning.py model.name=nomic-ai/gpt4all-j output_dir=nomic-ai/gpt4all-j-tuned dataset.wandb=1 dataset.name=/opentensor/opentensor-validator/runs/kltiefxf
 ```
 
 Note the nested structure in the config, since `model` is above `name` in `conf.yaml`, you must override
 `model.name` when invoking the command.
 
+
+## Fine-tuning with the wandb url
+
+If you have a wandb link from the validator, you can override `dataset.name` as above and set `wandb` as 1:
+```bash
+accelerate launch gpt4all_finetuning.py dataset.wandb=1 dataset.name=/opentensor/opentensor-validator/runs/kltiefxf
+```
 
 ## Serving custom models on bittensor
 

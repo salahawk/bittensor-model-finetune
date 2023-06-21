@@ -3,15 +3,20 @@ output_dir: "tuned-model"
 bittensor:
   network: "finney"
   netuid: 3
-
+  
 dataset:
+  wandb : 1
   # either 'bittensor', a local path, or one from huggingface
-  name: "bittensor"
-  wandb: 0
-  config_name: null # necessary for huggingface datasets
+  name: "/opentensor/opentensor-validator/runs/kltiefxf"
+  config_name: "/opentensor/opentensor-validator/runs/kltiefxf" # necessary for huggingface datasets
   num_batches: 10
-  block_size: null # if null, defaults to bittensor's validator sequence length.
+  block_size: 5 # if null, defaults to bittensor's validator sequence length.
 
+  data_dir: "train_data" #specify any folder name you want
+  shuffle: true
+  n_samples: 200000 # specify any number of samples, this represents the number of samples that will be loaded from the downloaded json data.
+  n_shards: 1  # an integer >=1. This will be used during download of data samples
+  
   overwrite_cache: false
   keep_linebreaks: true
   concatenate_raw: false # only really necessary when loading a local .txt file
@@ -31,22 +36,32 @@ training:
   val_split_percent: 5
 
   # if null these both default to bittensor's validator batch size
-  train_batch_size: 2
-  eval_batch_size: 2
+  train_batch_size: 10
+  eval_batch_size: 10
 
   learning_rate: 1e-5
   weight_decay: 0.0
   num_epochs: 1
-  max_train_steps: null
-  gradient_accumulation_steps: 1
+  max_train_steps: 10000
+  gradient_accumulation_steps: 4
   lr_scheduler: "constant" # ["linear", "cosine", "cosine_with_restarts", "polynomial", "constant", "constant_with_warmup"]
   lr_warmup_steps: 0
-  eval_every: 50
+  eval_every: epoch
 
   checkpoint:
     resume_from_checkpoint: 0 # integer representing which checkpoint to load from, or <= 0 to not
+    checkpointing_steps: epoch
     every_n_steps: null
+    
+  hub:
+    push_to_hub: false
+    model_id: null
+    token: null
+
+load_dir: null  
 
 tracking:
   enabled: false
   report_to: "all"
+  
+load_best_model: true

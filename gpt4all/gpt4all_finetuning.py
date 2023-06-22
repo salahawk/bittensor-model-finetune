@@ -39,8 +39,8 @@ from transformers import (
     AutoTokenizer,
     default_data_collator,
     get_scheduler,
-    LlamaForCausalLM,
-    DefaultDataCollator,
+    LlamaForCausalLM, DefaultDataCollator
+    
 )
 
 import argparse
@@ -49,39 +49,41 @@ import re
 # deepspeed_plugin = DeepSpeedPlugin(zero_stage=3, gradient_accumulation_steps=4)
 
 
-unicode_characters = {
-    r"\\u003e": ">",
-    r"\\u0026": "&",
-    r"\\u003c": "<",
-    r"\\u2029": "\n",
+unicode_characters = {r'\\u003e': '>',
+ r'\\u0026': '&',
+ r'\\u003c' : '<',
+ r'\\u2029': '\n',
 }
 
-
-def preprocess_text(text, unicode_characters=unicode_characters):
+def preprocess_text(text, unicode_characters = unicode_characters):
     for code, value in unicode_characters.items():
         text = re.sub(code, value, text)
-    text = re.sub(r"\\u[a-f0-9]{4}", "", text)
-    text = text.replace("\\n\\n\\n\\n", "  ")
-    text = text.replace("\\n\\n\\n", "  ")
-    text = text.replace("\\n\\n", " ")
-    text = text.replace(":\\n-", ":-")
-    text = text.replace(" \\n", " ")
-    text = text.replace("\\n", " ")
-    text = re.sub(r"-{6,1000}", r"-----", text)
-    # text = re.sub(r' -----{1,10}', r'-----', text)
-    text = re.sub(r"={6,20}", r"=====", text)
-    text = re.sub(r"\s?\\{2,10}", r"\\", text)
-    text = re.sub(r"\s?\\{1,10}\s+", r"", text)
-
-    # text = text.replace(r'\\u', r'\u')
-    # text = re.sub()
-    # text = text.replace('\\n', ' ')
-    # text = text.replace('\\"', '\"')
-
+    text = re.sub(r'\\u[a-f0-9]{4}', "", text)    
+    text = text.replace('\\n\\n\\n\\n', '  ')
+    text = text.replace('\\n\\n\\n', '  ')
+    text = text.replace('\\n\\n', ' ')
+    text = text.replace(':\\n-', ':-')
+    text = text.replace(' \\n', ' ')
+    text = text.replace('\\n', ' ')
+    text = re.sub(r'-{6,1000}', r'-----', text)
+    #text = re.sub(r' -----{1,10}', r'-----', text)
+    text = re.sub(r'={6,20}',r'=====', text)
+    text = re.sub(r'\s?\\{2,10}', r'\\', text)
+    text = re.sub(r'\s?\\{1,10}\s+', r'', text)
+    
+    #text = text.replace(r'\\u', r'\u')
+    #text = re.sub()
+    #text = text.replace('\\n', ' ')
+    #text = text.replace('\\"', '\"')
+    
     return text
 
 
+
+
+
 def check_cfg_and_load_defaults(cfg: DictConfig) -> DictConfig:
+
     # subtensor = bittensor.subtensor(network=cfg.bittensor.network)
     # if cfg.dataset.block_size is None:
     #     cfg.dataset.block_size = subtensor.validator_sequence_length(netuid=cfg.bittensor.netuid)
@@ -147,43 +149,44 @@ def check_cfg_and_load_defaults(cfg: DictConfig) -> DictConfig:
 # This function was edited to download way more dataset.
 # you will create variables 'data_dir', 'n_samples', 'n_shards'
 
-
 def load_raw_datasets(cfg: DictConfig) -> DatasetDict:
     if cfg.dataset.wandb == 1:
         wandbUrl = cfg.dataset.name
         api = wandb.Api()
         run = api.run(wandbUrl)
         historyData = run.history()
-        historyData.loc[historyData.best_answer.str.len() == 0, "best_answer"] = "---"
+        historyData.loc[historyData.best_answer.str.len() == 0, "best_answer"] = '---'
+
 
         data1 = historyData[["base_prompt", "best_followup"]].copy()
-        data1.columns = ["prompt", "response"]
+        data1.columns = ['prompt', 'response']
         data1["source"] = ""
 
         data2 = historyData[["answer_prompt", "best_answer"]].copy()
-        data2.columns = ["prompt", "response"]
+        data2.columns = ['prompt', 'response']
         data2["source"] = ""
 
         data = pd.concat([data1, data2])
 
+
         reseted_data = data.reset_index(drop=True)
         dataset = Dataset.from_pandas(reseted_data)
         return dataset
-        # if os.path.exists(os.path.join(os.path.abspath(cfg.dataset.data_dir),"train_data.json")):
-        #     with open(os.path.join(os.path.abspath(cfg.dataset.data_dir),"train_data.json"), 'r') as f:
-        #         bittensor_dataset = json.load(f)
-        #     if cfg.dataset.n_samples == -1:
-        #         raw_datasets = Dataset.from_dict(bittensor_dataset)
-        #     else:
-        #         if cfg.dataset.shuffle:
-        #             bittensor_dataset['text'] = random.sample(bittensor_dataset['text'],cfg.dataset.n_samples)
-        #         else:
-        #             bittensor_dataset['text'] = bittensor_dataset['text'][:cfg.dataset.n_samples]
-        #         raw_datasets = Dataset.from_dict(bittensor_dataset)
-
-        #     return raw_datasets
-
-        # else:
+    # if os.path.exists(os.path.join(os.path.abspath(cfg.dataset.data_dir),"train_data.json")):
+    #     with open(os.path.join(os.path.abspath(cfg.dataset.data_dir),"train_data.json"), 'r') as f:
+    #         bittensor_dataset = json.load(f)
+    #     if cfg.dataset.n_samples == -1:
+    #         raw_datasets = Dataset.from_dict(bittensor_dataset)
+    #     else:
+    #         if cfg.dataset.shuffle:
+    #             bittensor_dataset['text'] = random.sample(bittensor_dataset['text'],cfg.dataset.n_samples)
+    #         else:
+    #             bittensor_dataset['text'] = bittensor_dataset['text'][:cfg.dataset.n_samples]
+    #         raw_datasets = Dataset.from_dict(bittensor_dataset)
+        
+    #     return raw_datasets
+        
+    # else:
         # if cfg.dataset.name == "bittensor":
         #     if not os.path.exists(cfg.dataset.data_dir):
         #         os.mkdir(cfg.dataset.data_dir)
@@ -219,9 +222,7 @@ def load_raw_datasets(cfg: DictConfig) -> DatasetDict:
             if extension == "txt":
                 extension = "text"
                 dataset_args["keep_linebreaks"] = cfg.dataset.keep_linebreaks
-            raw_datasets = load_dataset(
-                extension, data_files=data_files, **dataset_args
-            )
+            raw_datasets = load_dataset(extension, data_files=data_files, **dataset_args)
             raw_datasets = raw_datasets["text"]
         else:
             raw_datasets = load_dataset(cfg.dataset.name, cfg.dataset.config_name)
@@ -229,7 +230,9 @@ def load_raw_datasets(cfg: DictConfig) -> DatasetDict:
         return raw_datasets
 
 
+
 def load_model_and_tokenizer(cfg: DictConfig):
+
     if cfg.model.config_name is not None:
         config = AutoConfig.from_pretrained(cfg.model.config_name)
     else:
@@ -244,15 +247,19 @@ def load_model_and_tokenizer(cfg: DictConfig):
             cfg.model.name, use_fast=cfg.tokenizer.use_fast
         )
 
-    # tokenizer.pad_token = cfg.tokenizer.pad_token
+    #tokenizer.pad_token = cfg.tokenizer.pad_token
     if tokenizer.pad_token is None and tokenizer.eos_token is not None:
         tokenizer.pad_token = tokenizer.eos_token
 
-    model = AutoModelForCausalLM.from_pretrained(cfg.model.name)
+    model = AutoModelForCausalLM.from_pretrained(
+        cfg.model.name
+    )
 
     model.resize_token_embeddings(len(tokenizer))
 
     return tokenizer, model
+
+
 
 
 def tokenize_inputs(tokenizer, examples):
@@ -264,7 +271,7 @@ def tokenize_inputs(tokenizer, examples):
     for prompt, response in zip(examples["prompt"], examples["response"]):
         if different_eos:
             if response.count("</s> \n") > 0:
-                response = response.replace("</s> \n", f"{tokenizer.eos_token} \n")
+                response = response.replace("</s> \n", f"{tokenizer.eos_token} \n") 
 
         prompt_len = len(tokenizer(prompt + "\n", return_tensors="pt")["input_ids"][0])
 
@@ -277,28 +284,12 @@ def tokenize_inputs(tokenizer, examples):
             new_len = min(max_length // 2, len(prompt) // 2)
             prompt = prompt[:new_len]
             # get new prompt length
-            prompt_len = (
-                tokenizer(
-                    prompt + "\n",
-                    return_tensors="pt",
-                    max_length=max_length // 2,
-                    truncation=True,
-                )
-                .input_ids.ne(tokenizer.pad_token_id)
-                .sum()
-                .item()
-            )
+            prompt_len = tokenizer(prompt + "\n", return_tensors="pt", max_length=max_length // 2, truncation=True).input_ids.ne(tokenizer.pad_token_id).sum().item()
 
-        assert (
-            prompt_len <= max_length // 2
-        ), f"prompt length {prompt_len} exceeds max length {max_length}"
+        assert prompt_len <= max_length // 2, f"prompt length {prompt_len} exceeds max length {max_length}"
 
-        input_tokens = tokenizer(
-            prompt + "\n" + response + tokenizer.eos_token,
-            truncation=True,
-            max_length=max_length,
-            return_tensors="pt",
-        )["input_ids"].squeeze()
+        input_tokens = tokenizer(prompt + "\n" + response + tokenizer.eos_token,
+                                 truncation=True, max_length=max_length, return_tensors="pt")["input_ids"].squeeze()
 
         labels = input_tokens.clone()
         labels[:prompt_len] = -100
@@ -306,59 +297,55 @@ def tokenize_inputs(tokenizer, examples):
             # pad to max_length with -100
             labels = torch.cat([labels, torch.full((max_length - len(labels),), -100)])
 
-        assert (labels == -100).sum() < len(
-            labels
-        ), f"Labels are all -100, something wrong. prompt length {prompt_len} exceeds max length {max_length}"
-
+        assert (labels == -100).sum() < len(labels), f"Labels are all -100, something wrong. prompt length {prompt_len} exceeds max length {max_length}" 
+        
         if (labels == -100).sum() == len(labels) - 1:
             print(prompt)
             print(response)
             raise
 
-        input_tokens = tokenizer.pad(
-            {"input_ids": input_tokens}, padding="max_length", max_length=max_length
-        )["input_ids"]
+        input_tokens = tokenizer.pad({"input_ids": input_tokens}, padding="max_length", max_length=max_length)["input_ids"]
         out["labels"].append(labels)
         out["input_ids"].append(input_tokens)
 
     out = {k: torch.stack(v) if isinstance(v, list) else v for k, v in out.items()}
 
     return out
-
-
 def preprocess(cfg, accelerator, tokenizer, raw_datasets):
+
     if cfg.dataset.wandb == 1:
-        raw_datasets = raw_datasets.train_test_split(test_size=0.05, seed=30)
-        train_dataset, val_dataset = raw_datasets["train"], raw_datasets["test"]
+        raw_datasets = raw_datasets.train_test_split(test_size=.05, seed=30)
+        train_dataset, eval_dataset = raw_datasets["train"], raw_datasets["test"]
         with accelerator.main_process_first():
             kwargs = {}
             train_dataset = train_dataset.map(
                 lambda ele: tokenize_inputs(tokenizer, ele),
                 batched=True,
                 remove_columns=["source", "prompt"],
-                **kwargs,
+                **kwargs
             )
-            val_dataset = val_dataset.map(
-                lambda ele: tokenize_inputs(tokenizer, ele),
+            eval_dataset = eval_dataset.map(
+                lambda ele: tokenize_inputs( tokenizer, ele),
                 batched=True,
                 remove_columns=["source", "prompt"],
-                **kwargs,
+                **kwargs
             )
             train_dataset = train_dataset.with_format("torch")
-            val_dataset = val_dataset.with_format("torch")
+            eval_dataset = eval_dataset.with_format("torch")
             train_dataloader = DataLoader(
                 train_dataset,
                 collate_fn=DefaultDataCollator(),
                 batch_size=cfg.training.train_batch_size,
             )
 
-            val_dataloader = DataLoader(
-                val_dataset,
+            eval_dataloader = DataLoader(
+                eval_dataset,
                 collate_fn=DefaultDataCollator(),
                 batch_size=cfg.training.eval_batch_size,
             )
 
-        return train_dataloader, val_dataloader
+        return train_dataloader, eval_dataloader, eval_dataset
+
 
     # First we tokenize all the texts.
     column_names = raw_datasets.column_names
@@ -379,7 +366,7 @@ def preprocess(cfg, accelerator, tokenizer, raw_datasets):
         # Split by chunks of max_len.
         result = {
             k: [
-                t[i : i + cfg.dataset.block_size]
+                t[i: i + cfg.dataset.block_size]
                 for i in range(0, total_length, cfg.dataset.block_size)
             ]
             for k, t in concatenated_examples.items()
@@ -398,6 +385,7 @@ def preprocess(cfg, accelerator, tokenizer, raw_datasets):
         return result
 
     with accelerator.main_process_first():
+
         tokenized_datasets = raw_datasets.map(
             tokenize_fn,
             batched=True,
@@ -416,12 +404,10 @@ def preprocess(cfg, accelerator, tokenizer, raw_datasets):
             )
 
     return tokenized_datasets
-
+  
 
 # New Code #
-def checkpoint_model(
-    checkpoint_folder, ckpt_id, model, epoch, last_global_step, **kwargs
-):
+def checkpoint_model(checkpoint_folder, ckpt_id, model, epoch, last_global_step, **kwargs):
     """Utility function for checkpointing model + optimizer dictionaries
     The main purpose for this is to be able to resume training from that instant again
     """
@@ -433,9 +419,7 @@ def checkpoint_model(
     checkpoint_state_dict.update(kwargs)
 
     success = model.save_checkpoint(checkpoint_folder, ckpt_id, checkpoint_state_dict)
-    status_msg = (
-        f"checkpointing: checkpoint_folder={checkpoint_folder}, ckpt_id={ckpt_id}"
-    )
+    status_msg = f"checkpointing: checkpoint_folder={checkpoint_folder}, ckpt_id={ckpt_id}"
     if success:
         logging.info(f"Success {status_msg}")
     else:
@@ -457,17 +441,15 @@ def load_training_checkpoint(model, load_dir, tag=None, **kwargs):
 
 # New Code #
 def evaluate(cfg, model, eval_dataloader, accelerator, eval_dataset):
-    model.eval()
-    #     losses = []
+    #model.eval()
+#     losses = []
     eval_losses = []
     for _eval_step, eval_batch in enumerate(eval_dataloader):
         with torch.no_grad():
             outputs = model(**eval_batch)
 
         loss = outputs.loss
-        eval_losses.append(
-            accelerator.gather_for_metrics(loss.repeat(cfg.training.eval_batch_size))
-        )
+        eval_losses.append(accelerator.gather_for_metrics(loss.repeat(cfg.training.eval_batch_size)))
 
     losses = torch.cat(eval_losses)
     losses = losses[: len(eval_dataset)]
@@ -477,10 +459,11 @@ def evaluate(cfg, model, eval_dataloader, accelerator, eval_dataset):
     except OverflowError:
         perplexity = float("inf")
     return perplexity, eval_loss
-
+  
 
 @hydra.main(version_base=None, config_path="conf", config_name="config")
 def main(cfg: DictConfig):
+
     cfg = check_cfg_and_load_defaults(cfg)
     os.makedirs(cfg.output_dir, exist_ok=True)
     logger = get_logger(__name__)
@@ -489,69 +472,63 @@ def main(cfg: DictConfig):
         datefmt="%m/%d/%Y %H:%M:%S",
         level=logging.INFO,
     )
-    #     accelerator = (
-    #         Accelerator(log_with=cfg.tracking.report_to, logging_dir=cfg.output_dir)
-    #         if cfg.tracking.enabled
-    #         else Accelerator(fp16=True, deepspeed_plugin=deepspeed_plugin)
-    #         #else Accelerator()
-    #     )
+#     accelerator = (
+#         Accelerator(log_with=cfg.tracking.report_to, logging_dir=cfg.output_dir)
+#         if cfg.tracking.enabled
+#         else Accelerator(fp16=True, deepspeed_plugin=deepspeed_plugin)
+#         #else Accelerator()
+#     )
     accelerator = (
-        Accelerator(log_with=cfg.tracking.report_to)
-        if cfg.tracking.enabled
-        else Accelerator()
+       Accelerator(log_with=cfg.tracking.report_to) if cfg.tracking.enabled else Accelerator()
     )
-    print("aa")
+    print('aa')
+    
+#     # Handle the repository creation
+#     if accelerator.is_main_process:
+#         if cfg.push_to_hub:
+#             if cfg.hub_model_id is None:
+#                 repo_name = get_full_repo_name(Path(cfg.output_dir).name, token=cfg.hub_token)
+#             else:
+#                 repo_name = cfg.hub_model_id
+#             repo = Repository(cfg.output_dir, clone_from=repo_name)
 
-    #     # Handle the repository creation
-    #     if accelerator.is_main_process:
-    #         if cfg.push_to_hub:
-    #             if cfg.hub_model_id is None:
-    #                 repo_name = get_full_repo_name(Path(cfg.output_dir).name, token=cfg.hub_token)
-    #             else:
-    #                 repo_name = cfg.hub_model_id
-    #             repo = Repository(cfg.output_dir, clone_from=repo_name)
-
-    #             with open(os.path.join(cfg.output_dir, ".gitignore"), "w+") as gitignore:
-    #                 if "step_*" not in gitignore:
-    #                     gitignore.write("step_*\n")
-    #                 if "epoch_*" not in gitignore:
-    #                     gitignore.write("epoch_*\n")
-    #         elif cfg.output_dir is not None:
-    #             os.makedirs(cfg.output_dir, exist_ok=True)
-
-    # accelerator = create_accelerator(cfg)
+#             with open(os.path.join(cfg.output_dir, ".gitignore"), "w+") as gitignore:
+#                 if "step_*" not in gitignore:
+#                     gitignore.write("step_*\n")
+#                 if "epoch_*" not in gitignore:
+#                     gitignore.write("epoch_*\n")
+#         elif cfg.output_dir is not None:
+#             os.makedirs(cfg.output_dir, exist_ok=True)    
+    
+    
+    
+    
+    #accelerator = create_accelerator(cfg)
     accelerator.wait_for_everyone()
     print("waiting finished")
 
+   
     if cfg.training.seed is not None:
         logger.info(f"Setting random seed to {cfg.training.seed}")
         set_seed(cfg.training.seed)
     print(1)
     logger.info(accelerator.state, main_process_only=False)
     logger.info(OmegaConf.to_yaml(cfg))
-
+    
     tokenizer, model = load_model_and_tokenizer(cfg)
     print(2)
-    # optimizer = create_optimizer(cfg, model)
+    #optimizer = create_optimizer(cfg, model)
 
-    # Optimizer
+# Optimizer
     # Split weights in two groups, one with weight decay and the other not.
     no_decay = ["bias", "LayerNorm.weight"]
     optimizer_grouped_parameters = [
         {
-            "params": [
-                p
-                for n, p in model.named_parameters()
-                if not any(nd in n for nd in no_decay)
-            ],
+            "params": [p for n, p in model.named_parameters() if not any(nd in n for nd in no_decay)],
             "weight_decay": cfg.training.weight_decay,
         },
         {
-            "params": [
-                p
-                for n, p in model.named_parameters()
-                if any(nd in n for nd in no_decay)
-            ],
+            "params": [p for n, p in model.named_parameters() if any(nd in n for nd in no_decay)],
             "weight_decay": 0.0,
         },
     ]
@@ -563,9 +540,8 @@ def main(cfg: DictConfig):
         or "optimizer" not in accelerator.state.deepspeed_plugin.deepspeed_config
         else DummyOptim
     )
-    optimizer = optimizer_cls(
-        optimizer_grouped_parameters, lr=cfg.training.learning_rate
-    )
+    optimizer = optimizer_cls(optimizer_grouped_parameters, lr=cfg.training.learning_rate)
+
 
     if (
         accelerator.state.deepspeed_plugin is None
@@ -579,17 +555,18 @@ def main(cfg: DictConfig):
         )
     else:
         lr_scheduler = DummyScheduler(
-            optimizer,
-            total_num_steps=cfg.training.max_train_steps,
-            warmup_num_steps=cfg.training.lr_warmup_steps,
+            optimizer, total_num_steps=cfg.training.max_train_steps, warmup_num_steps=cfg.training.lr_warmup_steps
         )
 
-    # lr_scheduler = get_scheduler(
-    #   name=cfg.training.lr_scheduler,
-    #   optimizer=optimizer,
-    #  num_warmup_steps=cfg.training.lr_warmup_steps,
-    # num_training_steps=cfg.training.max_train_steps,
-    # )
+
+
+
+   # lr_scheduler = get_scheduler(
+     #   name=cfg.training.lr_scheduler,
+     #   optimizer=optimizer,
+      #  num_warmup_steps=cfg.training.lr_warmup_steps,
+       # num_training_steps=cfg.training.max_train_steps,
+   # )
 
     # On TPU, the tie weights in our model have been disconnected, so we need to restore the ties.
     if accelerator.distributed_type == DistributedType.TPU:
@@ -597,13 +574,12 @@ def main(cfg: DictConfig):
 
     # Load and preprocess data
     raw_datasets = load_raw_datasets(cfg)
-    if cfg.dataset.wandb == 1:
-        train_dataloader, eval_dataloader = preprocess(
-            cfg, accelerator, tokenizer, raw_datasets
-        )
+    #eval_dataset=[]
+    if cfg.dataset.wandb ==1 :
+        train_dataloader, eval_dataloader, eval_dataset = preprocess(cfg, accelerator, tokenizer, raw_datasets)
     if cfg.dataset.wandb != 1:
         tokenized_datasets = preprocess(cfg, accelerator, tokenizer, raw_datasets)
-
+    
         if "train" not in tokenized_datasets.column_names:
             tokenized_datasets = tokenized_datasets.train_test_split(
                 test_size=cfg.training.val_split_percent / 100
@@ -632,31 +608,28 @@ def main(cfg: DictConfig):
         )
         eval_dataloader = DataLoader(
             eval_dataset,
+            shuffle=True,
             collate_fn=default_data_collator,
             batch_size=cfg.training.eval_batch_size,
         )
 
+    
     # New Code
     # Get gradient accumulation steps from deepspeed config if available
     if accelerator.state.deepspeed_plugin is not None:
-        cfg.training.gradient_accumulation_steps = (
-            accelerator.state.deepspeed_plugin.deepspeed_config[
-                "gradient_accumulation_steps"
-            ]
-        )
+        cfg.training.gradient_accumulation_steps = accelerator.state.deepspeed_plugin.deepspeed_config[
+            "gradient_accumulation_steps"
+        ]
 
-    num_update_steps_per_epoch = math.ceil(
-        len(train_dataloader) / cfg.training.gradient_accumulation_steps
-    )
+    num_update_steps_per_epoch = math.ceil(len(train_dataloader) / cfg.training.gradient_accumulation_steps)
     if cfg.training.max_train_steps is None:
-        cfg.training.max_train_steps = (
-            cfg.training.num_epochs * num_update_steps_per_epoch
-        )
+        cfg.training.max_train_steps = cfg.training.num_epochs * num_update_steps_per_epoch
     else:
-        cfg.training.num_epochs = math.ceil(
-            cfg.training.max_train_steps / num_update_steps_per_epoch
-        )
-
+        cfg.training.num_epochs = math.ceil(cfg.training.max_train_steps / num_update_steps_per_epoch)
+    print('sss')
+    # model = model.to(accelerator.device)
+    # model = torch.nn.DataParallel(model,  device_ids=[0, 1, 2, 3])
+    print('sssss')
     # Prepare everything using our accelerator
     (
         model,
@@ -667,14 +640,14 @@ def main(cfg: DictConfig):
     ) = accelerator.prepare(
         model, optimizer, train_dataloader, eval_dataloader, lr_scheduler
     )
-
+    
     # We need to recalculate our total training steps as the size of the training dataloader may have changed.
-    num_update_steps_per_epoch = math.ceil(
-        len(train_dataloader) / cfg.training.gradient_accumulation_steps
-    )
+    num_update_steps_per_epoch = math.ceil(len(train_dataloader) / cfg.training.gradient_accumulation_steps)
     cfg.training.max_train_steps = cfg.training.num_epochs * num_update_steps_per_epoch
-
-    # Figure out how many steps we should save the Accelerator states
+    
+    
+    
+ # Figure out how many steps we should save the Accelerator states
     if hasattr(cfg.training.checkpoint.checkpointing_steps, "isdigit"):
         checkpointing_steps = cfg.training.checkpoint.checkpointing_steps
         if cfg.training.checkpoint.checkpointing_steps.isdigit():
@@ -682,50 +655,41 @@ def main(cfg: DictConfig):
     else:
         checkpointing_steps = None
 
-    #     # We need to initialize the trackers we use, and also store our configuration.
-    #     # The trackers initializes automatically on the main process.
-    #     if cfg.tracking:
-    #         experiment_config = vars(cfg)
-    #         # TensorBoard cannot log Enums, need the raw value
-    #         experiment_config["lr_scheduler_type"] = experiment_config["lr_scheduler_type"].value
-    #         accelerator.init_trackers("clm_no_trainer", experiment_config)
+#     # We need to initialize the trackers we use, and also store our configuration.
+#     # The trackers initializes automatically on the main process.
+#     if cfg.tracking:
+#         experiment_config = vars(cfg)
+#         # TensorBoard cannot log Enums, need the raw value
+#         experiment_config["lr_scheduler_type"] = experiment_config["lr_scheduler_type"].value
+#         accelerator.init_trackers("clm_no_trainer", experiment_config)
 
     # We need to initialize the trackers we use, and also store our configuration.
     # We initialize the trackers only on main process because `accelerator.log`
     # only logs on main process and we don't want empty logs/runs on other processes.
+    
+    
+#     if cfg.tracking.enabled is True and accelerator.is_main_process:
+#     if cfg.tracking:
+#         experiment_config = vars(cfg)
+#         # TensorBoard cannot log Enums, need the raw value
+# #         experiment_config["lr_scheduler_type"] = experiment_config["lr_scheduler_type"].value
+# #         experiment_config["training.lr_scheduler"] = experiment_config["training.lr_scheduler"].value
+#         accelerator.init_trackers("tuned3", experiment_config)
 
-    #     if cfg.tracking.enabled is True and accelerator.is_main_process:
-    #     if cfg.tracking:
-    #         experiment_config = vars(cfg)
-    #         # TensorBoard cannot log Enums, need the raw value
-    # #         experiment_config["lr_scheduler_type"] = experiment_config["lr_scheduler_type"].value
-    # #         experiment_config["training.lr_scheduler"] = experiment_config["training.lr_scheduler"].value
-    #         accelerator.init_trackers("tuned3", experiment_config)
 
     # Train!
-    total_batch_size = (
-        cfg.training.train_batch_size
-        * accelerator.num_processes
-        * cfg.training.gradient_accumulation_steps
-    )
+    total_batch_size = cfg.training.train_batch_size * accelerator.num_processes * cfg.training.gradient_accumulation_steps
 
     logger.info("***** Running training *****")
-    # logger.info(f"  Num examples = {len(train_dataset)}")
+    #logger.info(f"  Num examples = {len(train_dataset)}")
     logger.info(f"  Num Epochs = {cfg.training.num_epochs}")
-    logger.info(
-        f"  Instantaneous batch size per device = {cfg.training.train_batch_size}"
-    )
-    #     logger.info(f"  Total train batch size (w. parallel, distributed & accumulation) = {total_batch_size}")
-    logger.info(
-        f"  Gradient Accumulation steps = {cfg.training.gradient_accumulation_steps}"
-    )
+    #logger.info(f"  Instantaneous batch size per device = {cfg.training.train_batch_size}")
+#     logger.info(f"  Total train batch size (w. parallel, distributed & accumulation) = {total_batch_size}")
+    logger.info(f"  Gradient Accumulation steps = {cfg.training.gradient_accumulation_steps}")
     logger.info(f"  Total optimization steps = {cfg.training.max_train_steps}")
-
+    
     # Only show the progress bar once on each machine.
-    progress_bar = tqdm(
-        range(cfg.training.max_train_steps),
-        disable=not accelerator.is_local_main_process,
-    )
+    progress_bar = tqdm(range(cfg.training.max_train_steps), disable=not accelerator.is_local_main_process)
     completed_steps = 0
     starting_epoch = 0
     best_metric = None
@@ -740,13 +704,12 @@ def main(cfg: DictConfig):
             cfg.training.checkpoint.resume_from_checkpoint,
             **{"load_optimizer_states": True, "load_lr_scheduler_states": True},
         )
-        accelerator.print(
-            f"Resumed from checkpoint: {cfg.training.checkpoint.resume_from_checkpoint}"
-        )
+        accelerator.print(f"Resumed from checkpoint: {cfg.training.checkpoint.resume_from_checkpoint}")
         resume_step = last_global_step
         starting_epoch = resume_step // len(train_dataloader)
         resume_step -= starting_epoch * len(train_dataloader)
-
+    # model = model.to(accelerator.device)
+    # model = torch.nn.DataParallel(model)
     for epoch in range(starting_epoch, cfg.training.num_epochs):
         model.train()
         if cfg.tracking:
@@ -754,30 +717,24 @@ def main(cfg: DictConfig):
         train_losses = []
         for step, batch in enumerate(train_dataloader):
             # We need to skip steps until we reach the resumed step
-            if (
-                cfg.training.checkpoint.resume_from_checkpoint
-                and epoch == starting_epoch
-            ):
+            if cfg.training.checkpoint.resume_from_checkpoint and epoch == starting_epoch:
                 if resume_step is not None and step < resume_step:
                     completed_steps += 1
                     continue
+            #batch = {k: v.to(accelerator.device) for k, v in batch.items()}
             outputs = model(**batch)
             loss = outputs.loss
             train_losses.append(
                 accelerator.gather(loss.repeat(cfg.training.train_batch_size))
-            )
+            )  
             train_losses_tensor = torch.cat(train_losses)
-            train_loss = torch.mean(train_losses_tensor)
+            train_loss = torch.mean(train_losses_tensor)            
             # We keep track of the loss at each epoch
             if cfg.tracking:
                 total_loss += loss.detach().float()
             loss = loss / cfg.training.gradient_accumulation_steps
             accelerator.backward(loss)
-            if (
-                step + 1
-            ) % cfg.training.gradient_accumulation_steps == 0 or step == len(
-                train_dataloader
-            ) - 1:
+            if (step + 1) % cfg.training.gradient_accumulation_steps == 0 or step == len(train_dataloader) - 1:
                 optimizer.step()
                 lr_scheduler.step()
                 optimizer.zero_grad()
@@ -793,35 +750,21 @@ def main(cfg: DictConfig):
             if completed_steps >= cfg.training.max_train_steps:
                 break
 
-        perplexity, eval_loss = evaluate(
-            cfg, model, eval_dataloader, accelerator, eval_dataset
-        )
-        logger.info(
-            f"epoch {epoch}: perplexity: {perplexity} train_loss: {train_loss} eval_loss: {eval_loss}"
-        )
-        with open(
-            os.path.join(cfg.output_dir, f"EvaluationEpoch{epoch}.json"), "w"
-        ) as f:
-            json.dump(
-                {
-                    "epoch": epoch,
-                    "perplexity": perplexity,
-                    "train_loss": train_loss.item(),
-                    "eval_loss": eval_loss.item(),
-                },
-                f,
-            )
-        #         if cfg.tracking:
-        #             accelerator.log(
-        #                 {
-        #                     "perplexity": perplexity,
-        #                     "eval_loss": eval_loss,
-        #                     "train_loss": total_loss.item() / len(train_dataloader),
-        #                     "epoch": epoch,
-        #                     "step": completed_steps,
-        #                 },
-        #                 step=completed_steps,
-        #             )
+        perplexity, eval_loss = evaluate(cfg, model, eval_dataloader, accelerator, eval_dataset)
+        logger.info(f"epoch {epoch}: perplexity: {perplexity} train_loss: {train_loss} eval_loss: {eval_loss}")
+        with open(os.path.join(cfg.output_dir, f"EvaluationEpoch{epoch}.json"), "w") as f:
+            json.dump({"epoch": epoch, "perplexity": perplexity, "train_loss": train_loss.item(), "eval_loss": eval_loss.item()}, f)
+#         if cfg.tracking:
+#             accelerator.log(
+#                 {
+#                     "perplexity": perplexity,
+#                     "eval_loss": eval_loss,
+#                     "train_loss": total_loss.item() / len(train_dataloader),
+#                     "epoch": epoch,
+#                     "step": completed_steps,
+#                 },
+#                 step=completed_steps,
+#             )
 
         # New Code #
         # Save the DeepSpeed checkpoint to the specified path
@@ -847,18 +790,14 @@ def main(cfg: DictConfig):
 
     # New Code #
     # Evaluates using the best checkpoint
-    perplexity, eval_loss = evaluate(
-        cfg, model, eval_dataloader, accelerator, eval_dataset
-    )
+    perplexity, eval_loss = evaluate(cfg, model, eval_dataloader, accelerator, eval_dataset)
     logger.info(f"Best model metrics: perplexity: {perplexity}  eval_loss: {eval_loss}")
     if eval_loss != best_metric:
         raise AssertionError(
             f"Best metric {best_metric} does not match the metric {eval_loss} of the loaded best model."
         )
-
-    print(
-        "Saving the model using the best weights checkpoint in the current output directory"
-    )
+        
+    print('Saving the model using the best weights checkpoint in the current output directory')
     if cfg.output_dir is not None:
         accelerator.wait_for_everyone()
         unwrapped_model = accelerator.unwrap_model(model)
@@ -877,17 +816,16 @@ def main(cfg: DictConfig):
         )
         if accelerator.is_main_process:
             tokenizer.save_pretrained(cfg.output_dir)
-        #             if cfg.push_to_hub:
-        #                 repo.push_to_hub(commit_message="End of training", auto_lfs_prune=True)
+#             if cfg.push_to_hub:
+#                 repo.push_to_hub(commit_message="End of training", auto_lfs_prune=True)
 
         with open(os.path.join(cfg.output_dir, "Best_Values.json"), "w") as f:
-            json.dump({"perplexity": perplexity, "eval_loss": eval_loss.item()}, f)
-
-
+            json.dump({"perplexity": perplexity,  "eval_loss": eval_loss.item()}, f)
+    
 #     print('Started Pushing the Model and Tokenizer to Hugging Face Hub')
-
+    
 #     print('Pushing Model weights and other related files to Hugging Face Hub')
-#     model.push_to_hub(cfg.output_dir)
+#     model.push_to_hub(cfg.output_dir) 
 #     print('Pushing the Tokenizer and related files to Hugging Face Hub')
 #     tokenizer.push_to_hub(cfg.output_dir)
 

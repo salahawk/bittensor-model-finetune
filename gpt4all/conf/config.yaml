@@ -9,7 +9,7 @@ dataset:
   # either 'bittensor', a local path, or one from huggingface
   name: "/opentensor/opentensor-validator/runs/kltiefxf"
   config_name: "/opentensor/opentensor-validator/runs/kltiefxf" # necessary for huggingface datasets
-  num_batches: 10
+  num_batches: 2
   block_size: 5 # if null, defaults to bittensor's validator sequence length.
 
   data_dir: "train_data" #specify any folder name you want
@@ -36,10 +36,10 @@ training:
   val_split_percent: 5
 
   # if null these both default to bittensor's validator batch size
-  train_batch_size: 10
-  eval_batch_size: 10
+  train_batch_size: 2
+  eval_batch_size: 2
 
-  learning_rate: 1e-5
+  learning_rate: 2e-5
   weight_decay: 0.0
   num_epochs: 1
   max_train_steps: 10000

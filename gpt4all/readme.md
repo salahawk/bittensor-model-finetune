@@ -19,10 +19,8 @@ limitations under the License.
 **Note**: This script was adapted from HuggingFace's Transformers/language-modeling code.
 
 ## Installation & Requirements
-This code assumes you have `bittensor` already installed on your machine, and is meant to be
-run entirely separately. Some basic linux commandline knowledge is assumed, but 
-[this guide](https://ubuntu.com/tutorials/command-line-for-beginners) should provide a good starting
-point to navigate and move around files, directories, etc.
+
+For developing server, if you're using Runpod online gpus, I recommend if you use pytorch@1.13 template.
 
 To start, clone this repository:
 ```commandline
@@ -34,10 +32,48 @@ created by the previous step.
 
 Run ```pip install -r requirements.txt``` to install the additional packages required by this script.
 
+**Note**:If you got some issues with Deepspeed and cpu_adam, you can uninstall deepspeed and reinstall by git repo.(https://huggingface.co/docs/transformers/main/main_classes/deepspeed)
+Example:
+```
+git clone https://github.com/microsoft/DeepSpeed/
+cd DeepSpeed
+rm -rf build
+TORCH_CUDA_ARCH_LIST="8.0" DS_BUILD_CPU_ADAM=1 DS_BUILD_FUSED_ADAM=1 DS_BUILD_UTILS=1 pip install .  --global-option="build_ext" --global-option="-j8" --no-cache -v --disable-pip-version-check 2>&1 | tee build.log
+```
+And also libaio library is needed.
+You can install libaio library using `apt install libaio-dev` cli.
 
 
 ## Configuring training parameters
 First of all, you have to configure accelerate with `accelerate config` cli.
+You can check your accelerate configuration by `accelerate env` cli.
+Here's example of env result of accelerate.
+```
+Accelerate version: 0.20.3
+Platform: Linux-5.4.0-148-generic-x86_64-with-glibc2.31
+Python version: 3.10.11
+Numpy version: 1.21.6
+PyTorch version (GPU?): 1.13.1+cu116 (True)
+PyTorch XPU available: False
+System RAM: 1007.74 GB
+GPU type: NVIDIA A100-SXM4-80GB
+Accelerate default config:
+compute_environment: LOCAL_MACHINE
+distributed_type: DEEPSPEED
+use_cpu: False
+num_processes: 4
+machine_rank: 0
+num_machines: 1
+rdzv_backend: static
+same_network: True
+main_training_function: main
+deepspeed_config: {'deepspeed_config_file': 'dsCpuConfig.json', 'zero3_init_flag': True}
+downcast_bf16: no
+tpu_use_cluster: False
+tpu_use_sudo: False
+tpu_env: []
+```
+
 And you have to login to wandb with wandb api key for loading data from wandb.
 Please type `wandb init` on cmd and input api key.
 
@@ -46,10 +82,6 @@ The defaults are chosen for quick training and not tuned; you will need to exper
 these.
 
 And also you can configure deepspeed plugin with `dsCpuConfig.json`(for cpu parameter offloading) and `dsNVMEconfig.json`(for NVME parameter offloading).
-
-**Note**: The above parameters are the *only* commands you can override with this script. That is,
-you may not pass flags you would normally use when running `btcli` (i.e. `--neuron.device` will *not* work).
-If there is a flag you wish to modify feel free to submit a feature request.
 
 
 You do not need to edit this file to change the parameters; they may be overridden when you call this
@@ -65,18 +97,18 @@ Note the nested structure in the config, since `model` is above `name` in `conf.
 
 ## Fine-tuning with the wandb url
 
+-When you're running script,if you didn't run `wandb init`, it will require wandb key and some informations.
+Please copy/paste your wandb api key and feel free input the informations manually.
+
 If you have a wandb link from the validator, you can override `dataset.name` as above and set `wandb` as 1:
 ```bash
 accelerate launch gpt4all_finetuning.py dataset.wandb=1 dataset.name=/opentensor/opentensor-validator/runs/kltiefxf
 ```
-
-## Serving custom models on bittensor
-
-To serve your tuned model on bittensor, just override `neuron.model_name` with the path to your 
-tuned model:
+or
 ```bash
-btcli run ..... --neuron.model_name=/home/{YOUR_USENAME}/gpt4all_model_tuning/tuned-model
+accelerate launch gpt4all_finetuning.py
 ```
+
 
 ## Limitations & Warnings
 

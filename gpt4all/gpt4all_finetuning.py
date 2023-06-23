@@ -170,6 +170,7 @@ def load_raw_datasets(cfg: DictConfig) -> DatasetDict:
 
 
         reseted_data = data.reset_index(drop=True)
+        #reseted_data = reseted_data.iloc[:50, :]
         dataset = Dataset.from_pandas(reseted_data)
         return dataset
     # if os.path.exists(os.path.join(os.path.abspath(cfg.dataset.data_dir),"train_data.json")):
@@ -314,6 +315,7 @@ def tokenize_inputs(tokenizer, examples):
 def preprocess(cfg, accelerator, tokenizer, raw_datasets):
 
     if cfg.dataset.wandb == 1:
+        # raw_datasets = raw_datasets.iloc[:50, :]
         raw_datasets = raw_datasets.train_test_split(test_size=.05, seed=30)
         train_dataset, eval_dataset = raw_datasets["train"], raw_datasets["test"]
         with accelerator.main_process_first():
@@ -441,8 +443,8 @@ def load_training_checkpoint(model, load_dir, tag=None, **kwargs):
 
 # New Code #
 def evaluate(cfg, model, eval_dataloader, accelerator, eval_dataset):
-    #model.eval()
-#     losses = []
+    model.eval()
+    losses = []
     eval_losses = []
     for _eval_step, eval_batch in enumerate(eval_dataloader):
         with torch.no_grad():
@@ -716,6 +718,7 @@ def main(cfg: DictConfig):
             total_loss = 0
         train_losses = []
         for step, batch in enumerate(train_dataloader):
+            
             # We need to skip steps until we reach the resumed step
             if cfg.training.checkpoint.resume_from_checkpoint and epoch == starting_epoch:
                 if resume_step is not None and step < resume_step:
@@ -749,7 +752,7 @@ def main(cfg: DictConfig):
                     accelerator.save_state(output_dir)
             if completed_steps >= cfg.training.max_train_steps:
                 break
-
+        accelerator.wait_for_everyone()
         perplexity, eval_loss = evaluate(cfg, model, eval_dataloader, accelerator, eval_dataset)
         logger.info(f"epoch {epoch}: perplexity: {perplexity} train_loss: {train_loss} eval_loss: {eval_loss}")
         with open(os.path.join(cfg.output_dir, f"EvaluationEpoch{epoch}.json"), "w") as f:

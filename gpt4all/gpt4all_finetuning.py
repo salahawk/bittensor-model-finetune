@@ -20,11 +20,8 @@ import torch
 from torch.utils.data import DataLoader
 
 from huggingface_hub import Repository
-
-import datasets
 import hydra
 import torch
-import transformers
 from accelerate import Accelerator, DistributedType, DeepSpeedPlugin
 from accelerate.logging import get_logger
 from accelerate.utils import DummyOptim, DummyScheduler, set_seed
@@ -43,12 +40,7 @@ from transformers import (
     
 )
 
-import argparse
 import re
-
-# deepspeed_plugin = DeepSpeedPlugin(zero_stage=3, gradient_accumulation_steps=4)
-
-
 unicode_characters = {r'\\u003e': '>',
  r'\\u0026': '&',
  r'\\u003c' : '<',
@@ -66,16 +58,9 @@ def preprocess_text(text, unicode_characters = unicode_characters):
     text = text.replace(' \\n', ' ')
     text = text.replace('\\n', ' ')
     text = re.sub(r'-{6,1000}', r'-----', text)
-    #text = re.sub(r' -----{1,10}', r'-----', text)
     text = re.sub(r'={6,20}',r'=====', text)
     text = re.sub(r'\s?\\{2,10}', r'\\', text)
-    text = re.sub(r'\s?\\{1,10}\s+', r'', text)
-    
-    #text = text.replace(r'\\u', r'\u')
-    #text = re.sub()
-    #text = text.replace('\\n', ' ')
-    #text = text.replace('\\"', '\"')
-    
+    text = re.sub(r'\s?\\{1,10}\s+', r'', text)   
     return text
 
 
@@ -94,60 +79,6 @@ def check_cfg_and_load_defaults(cfg: DictConfig) -> DictConfig:
 
     return cfg
 
-
-# def create_accelerator(cfg: DictConfig) -> Accelerator:
-
-#     accelerator = (
-#         Accelerator(log_with=cfg.tracking.report_to, logging_dir=cfg.output_dir)
-#         if cfg.tracking.enabled
-#         else Accelerator(fp16=True, deepspeed_plugin=deepspeed_plugin)
-#     )
-#     if accelerator.is_local_main_process:
-#         datasets.utils.logging.set_verbosity_warning()
-#         transformers.utils.logging.set_verbosity_info()
-#     else:
-#         datasets.utils.logging.set_verbosity_error()
-#         transformers.utils.logging.set_verbosity_error()
-
-#     return accelerator
-
-
-# def load_raw_datasets(cfg: DictConfig) -> DatasetDict:
-
-#     if cfg.dataset.name == "bittensor":
-
-#         dataset = bittensor.dataset(
-#             no_tokenizer=True,
-#             batch_size=cfg.training.train_batch_size,
-#             block_size=cfg.dataset.block_size,
-#         )
-#         dataloader = dataset.dataloader(cfg.dataset.num_batches)
-#         bittensor_dataset = {"text": []}
-#         for batch in tqdm(dataloader, desc="Loading data from bittensor IPFS"):
-#             bittensor_dataset["text"].extend(batch)
-#         raw_datasets = Dataset.from_dict(bittensor_dataset)
-
-#         dataset.close()  # Avoid leaving threadqueue running.
-#         return raw_datasets
-
-#     if os.path.exists(cfg.dataset.name):
-#         data_files = {"text": cfg.dataset.name}
-#         dataset_args = {}
-
-#         extension = os.path.splitext(cfg.dataset.name)[-1].lstrip(".")
-
-#         if extension == "txt":
-#             extension = "text"
-#             dataset_args["keep_linebreaks"] = cfg.dataset.keep_linebreaks
-#         raw_datasets = load_dataset(extension, data_files=data_files, **dataset_args)
-#         raw_datasets = raw_datasets["text"]
-#     else:
-#         raw_datasets = load_dataset(cfg.dataset.name, cfg.dataset.config_name)
-
-#     return raw_datasets
-
-# This function was edited to download way more dataset.
-# you will create variables 'data_dir', 'n_samples', 'n_shards'
 
 def load_raw_datasets(cfg: DictConfig) -> DatasetDict:
     if cfg.dataset.wandb == 1:
@@ -170,65 +101,8 @@ def load_raw_datasets(cfg: DictConfig) -> DatasetDict:
 
 
         reseted_data = data.reset_index(drop=True)
-        #reseted_data = reseted_data.iloc[:50, :]
         dataset = Dataset.from_pandas(reseted_data)
         return dataset
-    # if os.path.exists(os.path.join(os.path.abspath(cfg.dataset.data_dir),"train_data.json")):
-    #     with open(os.path.join(os.path.abspath(cfg.dataset.data_dir),"train_data.json"), 'r') as f:
-    #         bittensor_dataset = json.load(f)
-    #     if cfg.dataset.n_samples == -1:
-    #         raw_datasets = Dataset.from_dict(bittensor_dataset)
-    #     else:
-    #         if cfg.dataset.shuffle:
-    #             bittensor_dataset['text'] = random.sample(bittensor_dataset['text'],cfg.dataset.n_samples)
-    #         else:
-    #             bittensor_dataset['text'] = bittensor_dataset['text'][:cfg.dataset.n_samples]
-    #         raw_datasets = Dataset.from_dict(bittensor_dataset)
-        
-    #     return raw_datasets
-        
-    # else:
-        # if cfg.dataset.name == "bittensor":
-        #     if not os.path.exists(cfg.dataset.data_dir):
-        #         os.mkdir(cfg.dataset.data_dir)
-
-        #     dataset = bittensor.dataset(
-        #         no_tokenizer=True,
-        #         batch_size=cfg.training.train_batch_size,
-        #         block_size=cfg.dataset.block_size,
-        #         num_batches=cfg.dataset.num_batches,
-        #         save_dataset = True
-        #     )
-        #     dataloader = dataset.dataloader(cfg.dataset.num_batches * cfg.dataset.n_shards)
-        #     bittensor_dataset = {"text": []}
-
-        #     for batch in tqdm(dataloader, desc="Loading data from bittensor IPFS"):
-        #         bittensor_dataset["text"].extend(batch)
-
-        #     with open(os.path.join(os.path.abspath(cfg.dataset.data_dir),"train_data.json"), 'w') as f:
-        #         json.dump(bittensor_dataset, f, ensure_ascii=False)
-
-        #     bittensor_dataset["text"] = bittensor_dataset['text'][:cfg.dataset.n_samples]
-        #     raw_datasets = Dataset.from_dict(bittensor_dataset)
-
-        #     dataset.close()  # Avoid leaving threadqueue running.
-        #     return raw_datasets
-
-        if os.path.exists(cfg.dataset.name):
-            data_files = {"text": cfg.dataset.name}
-            dataset_args = {}
-
-            extension = os.path.splitext(cfg.dataset.name)[-1].lstrip(".")
-
-            if extension == "txt":
-                extension = "text"
-                dataset_args["keep_linebreaks"] = cfg.dataset.keep_linebreaks
-            raw_datasets = load_dataset(extension, data_files=data_files, **dataset_args)
-            raw_datasets = raw_datasets["text"]
-        else:
-            raw_datasets = load_dataset(cfg.dataset.name, cfg.dataset.config_name)
-
-        return raw_datasets
 
 
 
@@ -248,7 +122,6 @@ def load_model_and_tokenizer(cfg: DictConfig):
             cfg.model.name, use_fast=cfg.tokenizer.use_fast
         )
 
-    #tokenizer.pad_token = cfg.tokenizer.pad_token
     if tokenizer.pad_token is None and tokenizer.eos_token is not None:
         tokenizer.pad_token = tokenizer.eos_token
 
@@ -265,8 +138,6 @@ def load_model_and_tokenizer(cfg: DictConfig):
 
 def tokenize_inputs(tokenizer, examples):
     max_length = 1024
-
-    # hacky backward compatible
     different_eos = tokenizer.eos_token != "</s>"
     out = {"labels": [], "input_ids": []}
     for prompt, response in zip(examples["prompt"], examples["response"]):
@@ -315,7 +186,6 @@ def tokenize_inputs(tokenizer, examples):
 def preprocess(cfg, accelerator, tokenizer, raw_datasets):
 
     if cfg.dataset.wandb == 1:
-        # raw_datasets = raw_datasets.iloc[:50, :]
         raw_datasets = raw_datasets.train_test_split(test_size=.05, seed=30)
         train_dataset, eval_dataset = raw_datasets["train"], raw_datasets["test"]
         with accelerator.main_process_first():
@@ -474,55 +344,22 @@ def main(cfg: DictConfig):
         datefmt="%m/%d/%Y %H:%M:%S",
         level=logging.INFO,
     )
-#     accelerator = (
-#         Accelerator(log_with=cfg.tracking.report_to, logging_dir=cfg.output_dir)
-#         if cfg.tracking.enabled
-#         else Accelerator(fp16=True, deepspeed_plugin=deepspeed_plugin)
-#         #else Accelerator()
-#     )
+
     accelerator = (
        Accelerator(log_with=cfg.tracking.report_to) if cfg.tracking.enabled else Accelerator()
     )
-    print('aa')
-    
-#     # Handle the repository creation
-#     if accelerator.is_main_process:
-#         if cfg.push_to_hub:
-#             if cfg.hub_model_id is None:
-#                 repo_name = get_full_repo_name(Path(cfg.output_dir).name, token=cfg.hub_token)
-#             else:
-#                 repo_name = cfg.hub_model_id
-#             repo = Repository(cfg.output_dir, clone_from=repo_name)
 
-#             with open(os.path.join(cfg.output_dir, ".gitignore"), "w+") as gitignore:
-#                 if "step_*" not in gitignore:
-#                     gitignore.write("step_*\n")
-#                 if "epoch_*" not in gitignore:
-#                     gitignore.write("epoch_*\n")
-#         elif cfg.output_dir is not None:
-#             os.makedirs(cfg.output_dir, exist_ok=True)    
-    
-    
-    
-    
-    #accelerator = create_accelerator(cfg)
     accelerator.wait_for_everyone()
-    print("waiting finished")
 
    
     if cfg.training.seed is not None:
         logger.info(f"Setting random seed to {cfg.training.seed}")
         set_seed(cfg.training.seed)
-    print(1)
     logger.info(accelerator.state, main_process_only=False)
     logger.info(OmegaConf.to_yaml(cfg))
     
     tokenizer, model = load_model_and_tokenizer(cfg)
-    print(2)
-    #optimizer = create_optimizer(cfg, model)
 
-# Optimizer
-    # Split weights in two groups, one with weight decay and the other not.
     no_decay = ["bias", "LayerNorm.weight"]
     optimizer_grouped_parameters = [
         {
@@ -534,8 +371,7 @@ def main(cfg: DictConfig):
             "weight_decay": 0.0,
         },
     ]
-    # New Code #
-    # Creates Dummy Optimizer if `optimizer` was specified in the config file else creates Adam Optimizer
+
     optimizer_cls = (
         torch.optim.AdamW
         if accelerator.state.deepspeed_plugin is None
@@ -561,22 +397,12 @@ def main(cfg: DictConfig):
         )
 
 
-
-
-   # lr_scheduler = get_scheduler(
-     #   name=cfg.training.lr_scheduler,
-     #   optimizer=optimizer,
-      #  num_warmup_steps=cfg.training.lr_warmup_steps,
-       # num_training_steps=cfg.training.max_train_steps,
-   # )
-
     # On TPU, the tie weights in our model have been disconnected, so we need to restore the ties.
     if accelerator.distributed_type == DistributedType.TPU:
         model.tie_weights()
 
     # Load and preprocess data
     raw_datasets = load_raw_datasets(cfg)
-    #eval_dataset=[]
     if cfg.dataset.wandb ==1 :
         train_dataloader, eval_dataloader, eval_dataset = preprocess(cfg, accelerator, tokenizer, raw_datasets)
     if cfg.dataset.wandb != 1:
@@ -628,11 +454,6 @@ def main(cfg: DictConfig):
         cfg.training.max_train_steps = cfg.training.num_epochs * num_update_steps_per_epoch
     else:
         cfg.training.num_epochs = math.ceil(cfg.training.max_train_steps / num_update_steps_per_epoch)
-    print('sss')
-    # model = model.to(accelerator.device)
-    # model = torch.nn.DataParallel(model,  device_ids=[0, 1, 2, 3])
-    print('sssss')
-    # Prepare everything using our accelerator
     (
         model,
         optimizer,
@@ -657,36 +478,12 @@ def main(cfg: DictConfig):
     else:
         checkpointing_steps = None
 
-#     # We need to initialize the trackers we use, and also store our configuration.
-#     # The trackers initializes automatically on the main process.
-#     if cfg.tracking:
-#         experiment_config = vars(cfg)
-#         # TensorBoard cannot log Enums, need the raw value
-#         experiment_config["lr_scheduler_type"] = experiment_config["lr_scheduler_type"].value
-#         accelerator.init_trackers("clm_no_trainer", experiment_config)
-
-    # We need to initialize the trackers we use, and also store our configuration.
-    # We initialize the trackers only on main process because `accelerator.log`
-    # only logs on main process and we don't want empty logs/runs on other processes.
-    
-    
-#     if cfg.tracking.enabled is True and accelerator.is_main_process:
-#     if cfg.tracking:
-#         experiment_config = vars(cfg)
-#         # TensorBoard cannot log Enums, need the raw value
-# #         experiment_config["lr_scheduler_type"] = experiment_config["lr_scheduler_type"].value
-# #         experiment_config["training.lr_scheduler"] = experiment_config["training.lr_scheduler"].value
-#         accelerator.init_trackers("tuned3", experiment_config)
-
 
     # Train!
     total_batch_size = cfg.training.train_batch_size * accelerator.num_processes * cfg.training.gradient_accumulation_steps
 
     logger.info("***** Running training *****")
-    #logger.info(f"  Num examples = {len(train_dataset)}")
     logger.info(f"  Num Epochs = {cfg.training.num_epochs}")
-    #logger.info(f"  Instantaneous batch size per device = {cfg.training.train_batch_size}")
-#     logger.info(f"  Total train batch size (w. parallel, distributed & accumulation) = {total_batch_size}")
     logger.info(f"  Gradient Accumulation steps = {cfg.training.gradient_accumulation_steps}")
     logger.info(f"  Total optimization steps = {cfg.training.max_train_steps}")
     
@@ -710,8 +507,7 @@ def main(cfg: DictConfig):
         resume_step = last_global_step
         starting_epoch = resume_step // len(train_dataloader)
         resume_step -= starting_epoch * len(train_dataloader)
-    # model = model.to(accelerator.device)
-    # model = torch.nn.DataParallel(model)
+
     for epoch in range(starting_epoch, cfg.training.num_epochs):
         model.train()
         if cfg.tracking:
@@ -724,7 +520,6 @@ def main(cfg: DictConfig):
                 if resume_step is not None and step < resume_step:
                     completed_steps += 1
                     continue
-            #batch = {k: v.to(accelerator.device) for k, v in batch.items()}
             outputs = model(**batch)
             loss = outputs.loss
             train_losses.append(
@@ -757,17 +552,6 @@ def main(cfg: DictConfig):
         logger.info(f"epoch {epoch}: perplexity: {perplexity} train_loss: {train_loss} eval_loss: {eval_loss}")
         with open(os.path.join(cfg.output_dir, f"EvaluationEpoch{epoch}.json"), "w") as f:
             json.dump({"epoch": epoch, "perplexity": perplexity, "train_loss": train_loss.item(), "eval_loss": eval_loss.item()}, f)
-#         if cfg.tracking:
-#             accelerator.log(
-#                 {
-#                     "perplexity": perplexity,
-#                     "eval_loss": eval_loss,
-#                     "train_loss": total_loss.item() / len(train_dataloader),
-#                     "epoch": epoch,
-#                     "step": completed_steps,
-#                 },
-#                 step=completed_steps,
-#             )
 
         # New Code #
         # Save the DeepSpeed checkpoint to the specified path
@@ -819,18 +603,10 @@ def main(cfg: DictConfig):
         )
         if accelerator.is_main_process:
             tokenizer.save_pretrained(cfg.output_dir)
-#             if cfg.push_to_hub:
-#                 repo.push_to_hub(commit_message="End of training", auto_lfs_prune=True)
 
         with open(os.path.join(cfg.output_dir, "Best_Values.json"), "w") as f:
             json.dump({"perplexity": perplexity,  "eval_loss": eval_loss.item()}, f)
     
-#     print('Started Pushing the Model and Tokenizer to Hugging Face Hub')
-    
-#     print('Pushing Model weights and other related files to Hugging Face Hub')
-#     model.push_to_hub(cfg.output_dir) 
-#     print('Pushing the Tokenizer and related files to Hugging Face Hub')
-#     tokenizer.push_to_hub(cfg.output_dir)
 
 if __name__ == "__main__":
     main()
